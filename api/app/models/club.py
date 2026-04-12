@@ -1,0 +1,79 @@
+# =============================================================
+# club.py — Club ORM model
+# =============================================================
+# Predstavlja knjižni klub u sustavu.
+#
+# Relacije:
+#   Club 1 → N Membership (prijave članova u klub)
+#
+# Ključni constrainti:
+#   - name je UNIQUE: ne smiju postojati dva kluba s istim imenom
+#   - max_members > 0: klub mora primati bar jednog člana
+#   - registration_deadline: nakon ovog datuma prijave su zatvorene
+#
+# Dizajnerske odluke:
+#   - created_by je FK prema users — admin koji je kreirao klub
+#   - min_hours_per_week / pages_per_week: minimalni tempo čitanja
+#     koji član mora imati da se prijava ne odbije automatski
+# =============================================================
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.membership import Membership
+
+
+class Club(Base):
+    """
+    Knjižni klub.
+
+    Atributi:
+        id:                   Surrogate primary key.
+        name:                 Naziv kluba (jedinstven u sustavu).
+        description:          Opis kluba (opcionalan).
+        max_members:          Maksimalan broj odobrenih članova.
+        min_hours_per_week:   Minimalni sati čitanja tjedno za prijavu.
+        pages_per_week:       Minimalni broj stranica tjedno za prijavu.
+        registration_deadline: Rok do kojeg se može prijaviti (UTC).
+        created_by:           FK prema useru koji je kreirao klub (admin).
+
+    Relacije:
+        memberships: Lista prijava u ovaj klub.
+                     back_populates="club" znači da Membership.club
+                     pokazuje natrag na ovaj objekt.
+    """
+
+    __tablename__ = "clubs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    max_members: Mapped[int] = mapped_column(nullable=False)
+
+    # Minimalni uvjeti koje član mora zadovoljiti.
+    # Ako korisnik ima hours_per_week < min_hours_per_week
+    # ili pages_per_week < pages_per_week kluba → automatski REJECTED.
+    min_hours_per_week: Mapped[float] = mapped_column(nullable=False, default=0.0)
+    pages_per_week: Mapped[int] = mapped_column(nullable=False, default=0)
+
+    # Rok za prijavu — sprema se u UTC, uspoređuje s datetime.now(UTC).
+    registration_deadline: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+
+    # FK prema adminu koji je kreirao klub.
+    # RESTRICT: admin se ne može obrisati dok postoje njegovi klubovi.
+    created_by: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+
+    # ORM relationship — omogućuje club.memberships umjesto ručnog querya.
+    memberships: Mapped[list[Membership]] = relationship(back_populates="club")

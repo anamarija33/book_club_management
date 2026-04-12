@@ -53,9 +53,9 @@ def create_app() -> FastAPI:
     #    docs_url: u dev okruženju Swagger je na /docs,
     #    u produkciji ga gasimo (ne želimo javno izloženu dokumentaciju).
     app = FastAPI(
-        title="Powerlifting Registrations API",
+        title="Bookclub management API",
         version="0.1.0",
-        description="Sustav za prijavu natjecatelja na powerlifting natjecanja",
+        description="Sustav za prijavu čitatelja knjiga u knjiški klub",
         docs_url="/docs" if settings.ENV == "dev" else None,
         redoc_url=None,
     )

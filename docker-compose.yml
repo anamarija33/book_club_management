@@ -25,9 +25,9 @@ services:
     # ${VAR:-default} sintaksa: koristi vrijednost iz .env datoteke,
     # a ako ne postoji, koristi default vrijednost nakon ":-".
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-pl_reg}
-      POSTGRES_USER: ${POSTGRES_USER:-pl_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pl_pass}
+      POSTGRES_DB: ${POSTGRES_DB:-bookclub}
+      POSTGRES_USER: ${POSTGRES_USER:-bc_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bc_pass}
 
     # Mapiramo port 5432 iz kontejnera na lokalni port.
     # To znači da se na bazu spajamo kao da je lokalna: localhost:5432
@@ -43,7 +43,7 @@ services:
     # pg_isready je Postgres alat koji vraća 0 ako baza prima konekcije.
     # Koristi se i za depends_on u budućnosti (npr. ako dodamo API u Compose).
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pl_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bc_user}"]
       interval: 5s
       timeout: 3s
       retries: 5
