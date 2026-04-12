@@ -31,11 +31,11 @@ class Settings(BaseSettings):
     # Connection string za bazu. Format:
     # postgresql+asyncpg://<user>:<pass>@<host>:<port>/<db_name>
     # "asyncpg" dio govori SQLAlchemyu koji driver da koristi.
-    DATABASE_URL: str = "postgresql+asyncpg://pl_user:pl_pass@localhost:5432/pl_reg"
+    DATABASE_URL: str = "postgresql+asyncpg://bc_user:bc_pass@localhost:5432/bookclub"
 
     # JWT (JSON Web Token) konfiguracija — koristi se od predavanja 3.
     # Secret MORA biti promijenjen u produkciji!
-    JWT_SECRET: str = "change-me-in-production"
+    JWT_SECRET: str = "bookclub-api"
     JWT_ISSUER: str = "sit-unizd"
 
     # model_config govori Pydanticu ODAKLE čitati env varijable.

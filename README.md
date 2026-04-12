@@ -1,6 +1,6 @@
-# Powerlifting Competition Registrations
+# Book club management
 
-Sustav za prijavu natjecatelja na powerlifting natjecanja.  
+Sustav za prijavu klubova za čitanje.  
 Projekt za kolegij **Razvoj web aplikacija** — SIT UNIZD.
 
 ---
