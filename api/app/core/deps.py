@@ -22,9 +22,21 @@
 # =============================================================
 from typing import AsyncGenerator
 
+from fastapi import Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
+from app.core.errors import AppError
+from app.core.jwt import decode_token
+from app.models.user import User
+from app.repositories import user_repo
+
+# HTTPBearer automatski čita "Authorization: Bearer <token>" header.
+# auto_error=False: ne baca 403, mi sami bacamo 401.
+_bearer_scheme = HTTPBearer(auto_error=False)
+
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -50,3 +62,38 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """
+    Dependency koja izvlači i validira korisnika iz JWT tokena.
+
+    Tijek:
+      1. HTTPBearer čita Authorization: Bearer <token> header
+      2. Dekodira token i provjerava potpis i expiry
+      3. Provjerava je li type == "access" (ne refresh!)
+      4. Dohvaća korisnika iz baze i provjerava is_active
+
+    Korištenje u routeru:
+      @router.get("/clubs")
+      async def list_clubs(user: User = Depends(get_current_user)):
+          ...
+    """
+    if credentials is None:
+        raise AppError("invalid_credentials", "Token nije poslan.", 401)
+
+    try:
+        payload = decode_token(credentials.credentials)
+    except JWTError:
+        raise AppError("token_expired", "Token je istekao ili nije valjan.", 401)
+
+    # Sprječava korištenje refresh tokena kao access tokena
+    if payload.get("type") != "access":
+        raise AppError("invalid_credentials", "Token nije access tipa.", 401)
+
+    user = await user_repo.get_by_id(db, int(payload["sub"]))
+    if not user or not user.is_active:
+        raise AppError("invalid_credentials", "Korisnik ne postoji ili je deaktiviran.", 401)  # noqa: E501
+
+    return user
