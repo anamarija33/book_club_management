@@ -29,6 +29,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.membership import Membership
+    from app.models.user_book import UserBook
 
 
 class User(Base):
@@ -67,3 +68,6 @@ class User(Base):
 
     # ORM relationship — omogućuje user.memberships umjesto ručnog querya.
     memberships: Mapped[list[Membership]] = relationship(back_populates="user")
+    user_books: Mapped[list[UserBook]] = relationship(
+        "UserBook", back_populates="user", cascade="all, delete-orphan"
+    )

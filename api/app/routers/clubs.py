@@ -30,9 +30,7 @@ async def list_clubs(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role("admin", "member")),
 ):
-    """Lista svih klubova. Admin vidi sve, member vidi sve (ownership na memberships)."""
-    clubs = await club_service.list_clubs(db, user)
-    return clubs
+    return await club_service.list_clubs(db, user)
 
 
 @router.post("/", response_model=ClubResponse, status_code=status.HTTP_201_CREATED)
@@ -41,8 +39,7 @@ async def create_club(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_role("admin")),
 ):
-    """Admin kreira novi knjižni klub."""
-    club = await club_service.create_club(
+    return await club_service.create_club(
         db,
         name=body.name,
         description=body.description,
@@ -52,7 +49,6 @@ async def create_club(
         registration_deadline=body.registration_deadline,
         admin_id=admin.id,
     )
-    return club
 
 
 @router.get("/{club_id}", response_model=ClubResponse)
@@ -61,9 +57,7 @@ async def get_club(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role("admin", "member")),
 ):
-    """Detalji kluba."""
-    club = await club_service.get_club(db, club_id, user)
-    return club
+    return await club_service.get_club(db, club_id, user)
 
 
 @router.patch("/{club_id}", response_model=ClubResponse)
@@ -73,8 +67,7 @@ async def update_club(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_role("admin")),
 ):
-    """Admin ažurira podatke kluba (parcijalni update)."""
-    club = await club_service.update_club(
+    return await club_service.update_club(
         db,
         club_id=club_id,
         current_user=admin,
@@ -85,7 +78,6 @@ async def update_club(
         pages_per_week=body.pages_per_week,
         registration_deadline=body.registration_deadline,
     )
-    return club
 
 
 @router.delete("/{club_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -94,5 +86,4 @@ async def delete_club(
     db: AsyncSession = Depends(get_db),
     _admin: User = Depends(require_role("admin")),
 ):
-    """Admin briše klub."""
     await club_service.delete_club(db, club_id)

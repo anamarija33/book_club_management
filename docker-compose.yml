@@ -43,7 +43,7 @@ services:
     # pg_isready je Postgres alat koji vraća 0 ako baza prima konekcije.
     # Koristi se i za depends_on u budućnosti (npr. ako dodamo API u Compose).
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bc_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bc_user} -d ${POSTGRES_DB:-bookclub}"]
       interval: 5s
       timeout: 3s
       retries: 5

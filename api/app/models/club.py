@@ -28,6 +28,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 if TYPE_CHECKING:
+    from app.models.book import Book
     from app.models.membership import Membership
 
 
@@ -51,29 +52,30 @@ class Club(Base):
                      pokazuje natrag na ovaj objekt.
     """
 
+
+
     __tablename__ = "clubs"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     max_members: Mapped[int] = mapped_column(nullable=False)
-
-    # Minimalni uvjeti koje član mora zadovoljiti.
-    # Ako korisnik ima hours_per_week < min_hours_per_week
-    # ili pages_per_week < pages_per_week kluba → automatski REJECTED.
     min_hours_per_week: Mapped[float] = mapped_column(nullable=False, default=0.0)
     pages_per_week: Mapped[int] = mapped_column(nullable=False, default=0)
-
-    # Rok za prijavu — sprema se u UTC, uspoređuje s datetime.now(UTC).
     registration_deadline: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-
-    # FK prema adminu koji je kreirao klub.
-    # RESTRICT: admin se ne može obrisati dok postoje njegovi klubovi.
     created_by: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
+    # Trenutna knjiga kluba — nullable, klub možda još nije odabrao
+    current_book_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("books.id", ondelete="SET NULL"), nullable=True
+    )
 
-    # ORM relationship — omogućuje club.memberships umjesto ručnog querya.
-    memberships: Mapped[list[Membership]] = relationship(back_populates="club")
+    current_book: Mapped[Optional[Book]] = relationship(
+        "Book", back_populates="clubs"
+    )
+    memberships: Mapped[list[Membership]] = relationship(
+        "Membership", back_populates="club", cascade="all, delete-orphan"
+    )

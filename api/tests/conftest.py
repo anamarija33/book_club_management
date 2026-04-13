@@ -10,10 +10,9 @@ from app.core.database import Base
 from app.core.deps import get_db
 from app.core.security import hash_password
 from app.main import app as fastapi_app
+from app.models.book import Book
 from app.models.club import Club
 from app.models.user import User
-
-# --- Test engine (SQLite in-memory) ---
 
 engine_test = create_async_engine(
     "sqlite+aiosqlite://",
@@ -25,8 +24,6 @@ TestSessionLocal = async_sessionmaker(
     bind=engine_test, class_=AsyncSession, expire_on_commit=False
 )
 
-
-# --- Dependency override ---
 
 async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
     async with TestSessionLocal() as session:
@@ -41,12 +38,9 @@ async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
 fastapi_app.dependency_overrides[get_db] = _override_get_db
 
 
-def _future_deadline() -> datetime:
-    """Rok za prijavu 30 dana u budućnosti (UTC)."""
-    return datetime.now(timezone.utc) + timedelta(days=30)
+def _future_deadline(days: int = 30) -> datetime:
+    return datetime.now(timezone.utc) + timedelta(days=days)
 
-
-# --- Fixtures ---
 
 @pytest.fixture(autouse=True)
 async def setup_database():
@@ -72,7 +66,6 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 
 @pytest.fixture
 async def admin_user(db: AsyncSession) -> User:
-    """Admin korisnik za testove."""
     user = User(
         username="testadmin",
         email="admin@test.local",
@@ -85,9 +78,9 @@ async def admin_user(db: AsyncSession) -> User:
     await db.refresh(user)
     return user
 
+
 @pytest.fixture
 async def member_user(db: AsyncSession) -> User:
-    """Member korisnik za testove (s reading pace podacima)."""
     user = User(
         username="testmember",
         email="member@test.local",
@@ -102,19 +95,16 @@ async def member_user(db: AsyncSession) -> User:
     await db.refresh(user)
     return user
 
+
 @pytest.fixture
 async def club_and_member(db: AsyncSession, admin_user: User) -> tuple[Club, User]:
-    """
-    Knjižni klub + member korisnik koji zadovoljava uvjete kluba.
-    admin_user je kreator kluba (created_by).
-    """
     club = Club(
         name="Čitači klasika",
-        description="Klub za ljubitelje klasične književnosti",
+        description="Klub za ljubitelje klasike",
         max_members=20,
         min_hours_per_week=2.0,
         pages_per_week=30,
-        registration_deadline=_future_deadline(),
+        registration_deadline=_future_deadline(30),
         created_by=admin_user.id,
     )
     db.add(club)
@@ -138,14 +128,13 @@ async def club_and_member(db: AsyncSession, admin_user: User) -> tuple[Club, Use
 
 @pytest.fixture
 async def club_b(db: AsyncSession, admin_user: User) -> Club:
-    """Drugi klub za testiranje da member ne vidi tuđe detalje."""
     club = Club(
         name="Sci-Fi entuzijasti",
         description="Za ljubitelje SF-a",
         max_members=15,
         min_hours_per_week=1.0,
         pages_per_week=20,
-        registration_deadline=_future_deadline(),
+        registration_deadline=_future_deadline(30),
         created_by=admin_user.id,
     )
     db.add(club)
@@ -169,8 +158,22 @@ async def inactive_user(db: AsyncSession) -> User:
     return user
 
 
+@pytest.fixture
+async def book(db: AsyncSession) -> Book:
+    """Demo knjiga za testove."""
+    b = Book(
+        title="Zločin i kazna",
+        author="Fjodor Dostojevski",
+        pages=624,
+        description="Klasik ruske književnosti",
+    )
+    db.add(b)
+    await db.commit()
+    await db.refresh(b)
+    return b
+
+
 async def auth_header(client: AsyncClient, username: str, password: str) -> dict:
-    """Helper: napravi login i vrati Authorization header dict."""
     resp = await client.post(
         "/auth/login", json={"username": username, "password": password}
     )

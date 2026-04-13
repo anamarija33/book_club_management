@@ -19,11 +19,18 @@ from app.repositories import club_repo
 
 
 async def _get_or_404(db: AsyncSession, club_id: int) -> Club:
-    """Interni helper: dohvati klub ili baci 404."""
     club = await club_repo.get_by_id(db, club_id)
     if not club:
         raise AppError("not_found", "Klub nije pronađen.", 404)
     return club
+
+
+async def list_clubs(db: AsyncSession, current_user: User) -> list[Club]:
+    return await club_repo.get_all(db)
+
+
+async def get_club(db: AsyncSession, club_id: int, current_user: User) -> Club:
+    return await _get_or_404(db, club_id)
 
 
 async def create_club(
@@ -36,10 +43,6 @@ async def create_club(
     registration_deadline,
     admin_id: int,
 ) -> Club:
-    """
-    Admin kreira knjižni klub.
-    Provjera duplikata po imenu — 409 ako već postoji.
-    """
     existing = await club_repo.get_by_name(db, name)
     if existing:
         raise AppError("duplicate", f"Klub '{name}' već postoji.", 409)
@@ -56,27 +59,6 @@ async def create_club(
     return await club_repo.create(db, club)
 
 
-async def list_clubs(db: AsyncSession, current_user: User) -> list[Club]:
-    """
-    Admin vidi sve klubove.
-    Member vidi samo klubove u kojima sudjeluje (via memberships).
-    Za sad vraćamo sve — membership filtriranje dolazi s Membership modelom.
-    """
-    if current_user.role == "admin":
-        return await club_repo.get_all(db)
-    # Member za sad vidi sve (membership logika dolazi u sljedećim predavanjima)
-    return await club_repo.get_all(db)
-
-
-async def get_club(db: AsyncSession, club_id: int, current_user: User) -> Club:
-    """
-    Dohvati klub po ID-u.
-    Admin može vidjeti bilo koji klub.
-    Member može vidjeti bilo koji klub (detalji prijave su u membershipsima).
-    """
-    return await _get_or_404(db, club_id)
-
-
 async def update_club(
     db: AsyncSession,
     club_id: int,
@@ -88,13 +70,8 @@ async def update_club(
     pages_per_week: int | None,
     registration_deadline=None,
 ) -> Club:
-    """
-    Admin ažurira podatke kluba (parcijalni update).
-    Samo admin smije mijenjati klub.
-    """
     club = await _get_or_404(db, club_id)
 
-    # Provjera duplikata ako se mijenja ime
     if name is not None and name != club.name:
         existing = await club_repo.get_by_name(db, name)
         if existing:
@@ -117,7 +94,6 @@ async def update_club(
 
 
 async def delete_club(db: AsyncSession, club_id: int) -> None:
-    """Admin briše klub."""
     club = await _get_or_404(db, club_id)
     await db.delete(club)
     await db.flush()
