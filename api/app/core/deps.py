@@ -55,6 +55,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
       - Nema "curenja" stanja između dva paralelna requesta
       - Automatski cleanup — nema zaboravljenih otvorenih konekcija
     """
+
     async with AsyncSessionLocal() as session:
         try:
             yield session
@@ -62,6 +63,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
     db: AsyncSession = Depends(get_db),
@@ -97,3 +100,27 @@ async def get_current_user(
         raise AppError("invalid_credentials", "Korisnik ne postoji ili je deaktiviran.", 401)  # noqa: E501
 
     return user
+def require_role(*allowed_roles: str):
+    """
+    Factory dependency: propušta samo korisnike s navedenom rolom.
+
+    Korištenje:
+      @router.post("/clubs")
+      async def create_club(admin: User = Depends(require_role("admin"))):
+          ...
+
+      @router.get("/clubs")
+      async def list_clubs(user: User = Depends(require_role("admin", "member"))):
+          ...
+
+    Ako korisnik nema odgovarajuću rolu → 403 Forbidden.
+    401 = nisi prijavljen (tko si ti?)
+    403 = prijavljen si, ali nemaš pravo (što smiješ?)
+    """
+
+    def checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise AppError("forbidden", "Nemate dozvolu za ovu akciju.", 403)
+        return current_user
+
+    return checker

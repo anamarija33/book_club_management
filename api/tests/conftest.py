@@ -1,15 +1,4 @@
-# =============================================================
-# conftest.py — Test infrastruktura (fixtures i DB setup)
-# =============================================================
-# Koristimo in-memory SQLite umjesto PostgreSQL-a za testove:
-#   - Brzo (nema mrežnih poziva)
-#   - Nema ovisnosti o Dockeru
-#   - Svaki test dobije čistu bazu (izolacija)
-#
-# StaticPool osigurava da sve async sesije dijele istu
-# in-memory bazu (inače bi svaka konekcija dobila svoju).
-# =============================================================
-
+from datetime import datetime, timedelta, timezone
 from typing import AsyncGenerator
 
 import pytest
@@ -21,6 +10,7 @@ from app.core.database import Base
 from app.core.deps import get_db
 from app.core.security import hash_password
 from app.main import app as fastapi_app
+from app.models.club import Club
 from app.models.user import User
 
 # --- Test engine (SQLite in-memory) ---
@@ -38,7 +28,6 @@ TestSessionLocal = async_sessionmaker(
 
 # --- Dependency override ---
 
-
 async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
     async with TestSessionLocal() as session:
         try:
@@ -52,11 +41,15 @@ async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
 fastapi_app.dependency_overrides[get_db] = _override_get_db
 
 
+def _future_deadline() -> datetime:
+    """Rok za prijavu 30 dana u budućnosti (UTC)."""
+    return datetime.now(timezone.utc) + timedelta(days=30)
+
+
 # --- Fixtures ---
 
 @pytest.fixture(autouse=True)
 async def setup_database():
-    """Kreira tablice prije testa, briše ih nakon — potpuna izolacija."""
     async with engine_test.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -66,14 +59,12 @@ async def setup_database():
 
 @pytest.fixture
 async def db() -> AsyncGenerator[AsyncSession, None]:
-    """Sesija za seeding test podataka u fixtureima."""
     async with TestSessionLocal() as session:
         yield session
 
 
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
-    """Async HTTP klijent za testiranje endpointova."""
     transport = ASGITransport(app=fastapi_app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -94,7 +85,6 @@ async def admin_user(db: AsyncSession) -> User:
     await db.refresh(user)
     return user
 
-
 @pytest.fixture
 async def member_user(db: AsyncSession) -> User:
     """Member korisnik za testove (s reading pace podacima)."""
@@ -112,10 +102,60 @@ async def member_user(db: AsyncSession) -> User:
     await db.refresh(user)
     return user
 
+@pytest.fixture
+async def club_and_member(db: AsyncSession, admin_user: User) -> tuple[Club, User]:
+    """
+    Knjižni klub + member korisnik koji zadovoljava uvjete kluba.
+    admin_user je kreator kluba (created_by).
+    """
+    club = Club(
+        name="Čitači klasika",
+        description="Klub za ljubitelje klasične književnosti",
+        max_members=20,
+        min_hours_per_week=2.0,
+        pages_per_week=30,
+        registration_deadline=_future_deadline(),
+        created_by=admin_user.id,
+    )
+    db.add(club)
+    await db.flush()
+
+    member = User(
+        username="testmember",
+        email="member@test.local",
+        password_hash=hash_password("member123"),
+        role="member",
+        is_active=True,
+        hours_per_week=3.0,
+        pages_per_week=50,
+    )
+    db.add(member)
+    await db.commit()
+    await db.refresh(member)
+    await db.refresh(club)
+    return club, member
+
+
+@pytest.fixture
+async def club_b(db: AsyncSession, admin_user: User) -> Club:
+    """Drugi klub za testiranje da member ne vidi tuđe detalje."""
+    club = Club(
+        name="Sci-Fi entuzijasti",
+        description="Za ljubitelje SF-a",
+        max_members=15,
+        min_hours_per_week=1.0,
+        pages_per_week=20,
+        registration_deadline=_future_deadline(),
+        created_by=admin_user.id,
+    )
+    db.add(club)
+    await db.commit()
+    await db.refresh(club)
+    return club
+
 
 @pytest.fixture
 async def inactive_user(db: AsyncSession) -> User:
-    """Deaktivirani korisnik za testiranje is_active provjere."""
     user = User(
         username="inactive",
         email="inactive@test.local",
