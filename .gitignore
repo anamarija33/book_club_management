@@ -12,6 +12,7 @@ build/
 .eggs/
 
 # Virtualno okruženje — svaki developer kreira svoje lokalno.
+api/.venv/
 .venv/
 venv/
 ENV/
