@@ -27,6 +27,7 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.errors import AppError, app_error_handler
@@ -36,6 +37,8 @@ from app.routers.books import router as books_router
 from app.routers.clubs import router as clubs_router
 from app.routers.health import router as health_router
 from app.routers.memberships import router as memberships_router
+from app.routers.stats import router as stats_router
+from app.routers.users import router as users_router
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +69,21 @@ def create_app() -> FastAPI:
         redoc_url=None,
     )
 
-    # 3. Registracija globalnog error handlera.
+    # 3. CORS — dopušta zahtjeve s frontendia (localhost:5173 u dev okruženju).
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # 4. Registracija globalnog error handlera.
     #    Kad bilo koji endpoint baci AppError, FastAPI poziva
     #    app_error_handler umjesto defaultnog 500 odgovora.
     app.add_exception_handler(AppError, app_error_handler)
 
-    # 4. Uključivanje routera.
+    # 5. Uključivanje routera.
     #    prefix="/health" znači: svi endpointi iz health routera
     #    dobivaju prefix, pa @router.get("/") postaje GET /health.
     app.include_router(health_router, prefix="/health", tags=["health"])
@@ -83,6 +95,8 @@ def create_app() -> FastAPI:
         prefix="/clubs/{club_id}/memberships",
         tags=["memberships"],
     )
+    app.include_router(users_router, prefix="/users", tags=["users"])
+    app.include_router(stats_router, prefix="/stats", tags=["stats"])
     logger.info("Aplikacija kreirana (env=%s)", settings.ENV)
     return app
 

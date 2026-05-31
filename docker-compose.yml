@@ -47,7 +47,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
-pgadmin:
+
+  pgadmin:
     image: dpage/pgadmin4
     restart: unless-stopped
     environment:
@@ -66,3 +67,4 @@ pgadmin:
 # Vidljiv sa: docker volume ls
 volumes:
   pgdata:
+  pgadmin_data:

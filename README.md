@@ -191,3 +191,5 @@ git log --oneline --decorate     # Kratki pregled povijesti
 git diff <commit1>..<commit2>    # Usporedba dva commita
 git show <commit>                # Detalji jednog commita
 ```
+
+

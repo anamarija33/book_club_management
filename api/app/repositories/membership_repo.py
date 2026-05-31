@@ -70,6 +70,20 @@ async def count_approved(db: AsyncSession, club_id: int) -> int:
     return result.scalar_one()
 
 
+async def count_approved_per_club(
+    db: AsyncSession, club_ids: list[int]
+) -> dict[int, int]:
+    """Vrati broj odobrenih članova za svaki klub u jednom upitu."""
+    if not club_ids:
+        return {}
+    result = await db.execute(
+        select(Membership.club_id, func.count().label("cnt"))
+        .where(Membership.club_id.in_(club_ids), Membership.status == "approved")
+        .group_by(Membership.club_id)
+    )
+    return {row.club_id: row.cnt for row in result}
+
+
 async def create(db: AsyncSession, membership: Membership) -> Membership:
     db.add(membership)
     await db.flush()

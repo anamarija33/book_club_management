@@ -1,0 +1,18 @@
+:root {
+  --boja-pozadina: #100e0a;
+  --boja-povrsina: #1c1812;
+  --boja-povrsina-2: #231f18;
+  --boja-rub: #30281e;
+  --boja-tekst: #f2e6d0;
+  --boja-tekst-mute: #857564;
+  --boja-akcent: #c08b3a;
+  --boja-akcent-svijetla: #d9a84e;
+  --boja-uspjeh: #5a8c52;
+  --boja-upozorenje: #b87a35;
+
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'JetBrains Mono', monospace;
+
+  --tranzicija: 180ms ease;
+  --radijus: 2px;
+}

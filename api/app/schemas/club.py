@@ -41,5 +41,6 @@ class ClubResponse(BaseModel):
     pages_per_week: int
     registration_deadline: datetime
     created_by: int
+    member_count: int = 0
 
     model_config = {"from_attributes": True}

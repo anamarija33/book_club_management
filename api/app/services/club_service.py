@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.models.club import Club
 from app.models.user import User
-from app.repositories import club_repo
+from app.repositories import club_repo, membership_repo
 
 
 async def _get_or_404(db: AsyncSession, club_id: int) -> Club:
@@ -25,12 +25,21 @@ async def _get_or_404(db: AsyncSession, club_id: int) -> Club:
     return club
 
 
+async def _attach_counts(db: AsyncSession, clubs: list[Club]) -> list[Club]:
+    counts = await membership_repo.count_approved_per_club(db, [c.id for c in clubs])
+    for club in clubs:
+        club.member_count = counts.get(club.id, 0)  # type: ignore[attr-defined]
+    return clubs
+
+
 async def list_clubs(db: AsyncSession, current_user: User) -> list[Club]:
-    return await club_repo.get_all(db)
+    clubs = await club_repo.get_all(db)
+    return await _attach_counts(db, clubs)
 
 
 async def get_club(db: AsyncSession, club_id: int, current_user: User) -> Club:
-    return await _get_or_404(db, club_id)
+    club = await _get_or_404(db, club_id)
+    return (await _attach_counts(db, [club]))[0]
 
 
 async def create_club(
